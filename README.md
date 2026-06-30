@@ -112,7 +112,3 @@ python analysis.py        # builds the scorecard, runs the validation, writes fi
 ## Data
 
 The underlying **Lending Club** loan data is publicly available and used here for a non-commercial portfolio project. The **code** is released under the MIT License (see `LICENSE`).
-
----
-
-*Built as a portfolio project demonstrating credit scorecard development and independent model validation.*
