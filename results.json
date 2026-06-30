@@ -1,0 +1,61 @@
+{
+  "n_dev": 829350,
+  "n_oot": 518744,
+  "bad_rate_dev": 0.1846,
+  "n_features": 12,
+  "features": [
+    "fico",
+    "dti_eff",
+    "payment_to_income",
+    "loan_to_income",
+    "annual_inc_eff",
+    "installment",
+    "loan_amnt",
+    "revol_util",
+    "term_months",
+    "home_ownership",
+    "purpose",
+    "verification_status"
+  ],
+  "iv_top": {
+    "term_months": 0.238,
+    "loan_to_income": 0.122,
+    "fico": 0.112,
+    "payment_to_income": 0.08,
+    "dti_eff": 0.071,
+    "verification_status": 0.05,
+    "loan_amnt": 0.034,
+    "annual_inc_eff": 0.031
+  },
+  "auc_dev": 0.692,
+  "auc_oot": 0.678,
+  "gini_dev": 0.385,
+  "gini_oot": 0.356,
+  "ks_dev": 0.277,
+  "ks_oot": 0.256,
+  "pred_obs_ratio": 0.772,
+  "hl_stat": 11045.2,
+  "psi": 0.013,
+  "gini_challenger": 0.401,
+  "gini_gap": 0.045,
+  "segment_gini": {
+    "term 36m": 0.321,
+    "term 60m": 0.311,
+    "debt_consolidation": 0.353,
+    "credit_card": 0.373,
+    "home_improvement": 0.343,
+    "other": 0.336
+  },
+  "score_min": 465,
+  "score_max": 599,
+  "score_median": 536,
+  "pdo": 20,
+  "base_score": 600,
+  "base_odds": 50.0,
+  "rag": {
+    "discrimination": "GREEN",
+    "calibration": "RED",
+    "stability": "GREEN",
+    "benchmark": "GREEN"
+  }
+}
