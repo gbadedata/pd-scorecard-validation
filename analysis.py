@@ -15,22 +15,29 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import roc_auc_score, roc_curve
 
-PARQUET="/home/claude/fin2/data/lending_affordability.parquet"
-OUT="/home/claude/scorecard"; FIG=f"{OUT}/figures"; DAT=f"{OUT}/data"
+# Built by build_dataset.py from the Lending Club file (see README, "How to reproduce").
+PARQUET=os.environ.get("AFFORDABILITY_PARQUET","data/lending_affordability.parquet")
+OUT="."; FIG=f"{OUT}/figures"; DAT=f"{OUT}/data"
 os.makedirs(FIG,exist_ok=True); os.makedirs(DAT,exist_ok=True)
 NAVY="#16314E"; TEAL="#1C8C7D"; AMBER="#C8862B"; RED="#B23A48"; SLATE="#5B6B7B"; GREEN="#2E7D5B"; GREY="#9AA7B5"
 plt.rcParams.update({"font.family":"DejaVu Sans","axes.edgecolor":GREY,"axes.linewidth":0.8,"axes.grid":True,
     "grid.color":"#E6ECF2","grid.linewidth":0.7,"axes.axisbelow":True,"figure.dpi":120})
 EPS=1e-6
 
-df=pd.read_parquet(PARQUET)
+WINDOW=24
+df_all=pd.read_parquet(PARQUET)
+# Every accepted loan whose whole 24-month window was observable by the snapshot, finished or not.
+# (Earlier versions used finished loans only, which over-represents defaults in recent vintages.)
+df=df_all[df_all[f'obs_{WINDOW}']].copy()
 NUM=['fico','dti_eff','payment_to_income','loan_to_income','annual_inc_eff','installment','loan_amnt',
      'emp_length_num','revol_util','delinq_2yrs','inq_last_6mths','open_acc','pub_rec','total_acc','credit_history_yrs']
 CAT=['term_months','home_ownership','purpose','verification_status']
 for c in NUM: df[c]=pd.to_numeric(df[c],errors='coerce')
-df['target']=df['default'].astype(int)
-dev=df[df['issue_year']<=2015].copy(); oot=df[df['issue_year']>=2016].copy()
-print(f"Development (<=2015): {len(dev):,}  Out-of-time (>=2016): {len(oot):,}  bad rate dev {dev.target.mean():.3f}")
+df['target']=df[f'bad_{WINDOW}'].astype(int)     # bad = default within 24 months of issue
+dev=df[df['issue_year']<=2014].copy(); oot=df[df['issue_year']>=2015].copy()
+OOT_LAST=int(oot['issue_year'].max())
+print(f"Development (<=2014): {len(dev):,}  Out-of-time (2015-{OOT_LAST}): {len(oot):,}  "
+      f"bad rate dev {dev.target.mean():.3f}  oot {oot.target.mean():.3f}")
 
 # ---------------- WoE encoder ----------------
 class WoE:
@@ -215,6 +222,8 @@ plt.tight_layout(); plt.savefig(f"{FIG}/07_segment_gini.png",bbox_inches="tight"
 def rag(cond_g,cond_a): return "GREEN" if cond_g else ("AMBER" if cond_a else "RED")
 S=dict(
  n_dev=int(len(dev)),n_oot=int(len(oot)),bad_rate_dev=round(float(dev.target.mean()),4),
+ bad_rate_oot=round(float(oot.target.mean()),4),outcome=f"default within {WINDOW} months of issue",
+ dev_issued="<=2014",oot_issued=f"2015-{OOT_LAST}",n_observable=int(len(df)),n_all_loans=int(len(df_all)),
  n_features=len(FEATS),features=FEATS,
  iv_top={k:round(v,3) for k,v in iv_sorted[:8]},
  auc_dev=round(auc_dev,3),auc_oot=round(auc_oot,3),gini_dev=round(g_dev,3),gini_oot=round(g_oot,3),
