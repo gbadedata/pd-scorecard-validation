@@ -1,67 +1,56 @@
 feature,bin,woe,points
-fico,"(-inf, 667.0]",-0.344,34.6
-fico,"(667.0, 677.0]",-0.238,37.6
-fico,"(677.0, 692.0]",-0.109,41.1
-fico,"(692.0, 702.0]",0.054,45.7
-fico,"(702.0, 722.0]",0.266,51.5
-fico,"(722.0, inf]",0.712,63.9
-dti_eff,"(-inf, 9.53]",0.379,51.1
-dti_eff,"(9.53, 13.74]",0.25,48.7
-dti_eff,"(13.74, 17.48]",0.108,46.1
-dti_eff,"(17.48, 21.43]",-0.019,43.8
-dti_eff,"(21.43, 26.5]",-0.167,41.1
-dti_eff,"(26.5, inf]",-0.419,36.5
-payment_to_income,"(-inf, 0.0391]",0.472,57.9
-payment_to_income,"(0.0391, 0.0569]",0.265,51.9
-payment_to_income,"(0.0569, 0.0741]",0.098,47.0
-payment_to_income,"(0.0741, 0.0939]",-0.066,42.2
-payment_to_income,"(0.0939, 0.121]",-0.25,36.9
-payment_to_income,"(0.121, inf]",-0.36,33.7
-loan_to_income,"(-inf, 0.103]",0.49,40.4
-loan_to_income,"(0.103, 0.154]",0.347,41.5
-loan_to_income,"(0.154, 0.202]",0.176,42.8
-loan_to_income,"(0.202, 0.261]",-0.008,44.2
-loan_to_income,"(0.261, 0.335]",-0.254,46.1
-loan_to_income,"(0.335, inf]",-0.523,48.2
-annual_inc_eff,"(-inf, 40000.0]",-0.195,42.7
-annual_inc_eff,"(40000.0, 50000.0]",-0.137,43.1
-annual_inc_eff,"(50000.0, 64000.0]",-0.076,43.6
-annual_inc_eff,"(64000.0, 80000.0]",0.017,44.3
-annual_inc_eff,"(80000.0, 103020.0]",0.155,45.3
-annual_inc_eff,"(103020.0, inf]",0.325,46.6
-installment,"(-inf, 202.068]",0.331,44.2
-installment,"(202.068, 298.23]",0.015,44.2
-installment,"(298.23, 377.19]",-0.008,44.2
-installment,"(377.19, 495.86]",-0.105,44.2
-installment,"(495.86, 667.06]",-0.131,44.1
-installment,"(667.06, inf]",-0.057,44.2
-loan_amnt,"(-inf, 6000.0]",0.298,40.1
-loan_amnt,"(6000.0, 10000.0]",0.184,41.6
-loan_amnt,"(10000.0, 12000.0]",-0.062,45.0
-loan_amnt,"(12000.0, 16800.0]",-0.115,45.7
-loan_amnt,"(16800.0, 23600.0]",-0.176,46.6
-loan_amnt,"(23600.0, inf]",-0.17,46.5
-revol_util,"(-inf, 29.7]",0.279,41.6
-revol_util,"(29.7, 43.8]",0.1,43.2
-revol_util,"(43.8, 55.6]",-0.004,44.2
-revol_util,"(55.6, 67.1]",-0.06,44.7
-revol_util,"(67.1, 80.1]",-0.114,45.2
-revol_util,"(80.1, inf]",-0.162,45.7
-revol_util,Missing,-0.176,45.8
-term_months,36.0,0.334,54.9
-term_months,60.0,-0.727,20.9
-home_ownership,MORTGAGE,0.148,48.2
-home_ownership,OWN,-0.036,43.2
-home_ownership,Other,-0.094,41.6
-home_ownership,RENT,-0.155,39.9
-purpose,Other,-0.039,43.4
-purpose,car,0.376,51.7
-purpose,credit_card,0.213,48.4
-purpose,debt_consolidation,-0.079,42.6
-purpose,home_improvement,0.133,46.8
-purpose,major_purchase,0.153,47.2
-purpose,other,-0.071,42.8
-purpose,small_business,-0.504,34.1
-verification_status,Not Verified,0.368,47.5
-verification_status,Source Verified,-0.089,43.4
-verification_status,Verified,-0.179,42.5
+fico,"(-inf, 672.0]",-0.321,47.5
+fico,"(672.0, 682.0]",-0.186,50.7
+fico,"(682.0, 692.0]",-0.072,53.5
+fico,"(692.0, 707.0]",0.1,57.7
+fico,"(707.0, 727.0]",0.324,63.1
+fico,"(727.0, inf]",0.709,72.3
+dti_eff,"(-inf, 9.18]",0.308,60.5
+dti_eff,"(9.18, 13.27]",0.186,58.4
+dti_eff,"(13.27, 16.87]",0.102,57.0
+dti_eff,"(16.87, 20.63]",-0.024,54.8
+dti_eff,"(20.63, 25.29]",-0.139,52.9
+dti_eff,"(25.29, inf]",-0.325,49.7
+payment_to_income,"(-inf, 0.0396]",0.376,67.6
+payment_to_income,"(0.0396, 0.0578]",0.282,64.5
+payment_to_income,"(0.0578, 0.0752]",0.131,59.6
+payment_to_income,"(0.0752, 0.0951]",-0.016,54.7
+payment_to_income,"(0.0951, 0.122]",-0.18,49.3
+payment_to_income,"(0.122, inf]",-0.413,41.6
+loan_to_income,"(-inf, 0.104]",0.34,49.9
+loan_to_income,"(0.104, 0.156]",0.259,51.2
+loan_to_income,"(0.156, 0.206]",0.131,53.2
+loan_to_income,"(0.206, 0.264]",0.03,54.8
+loan_to_income,"(0.264, 0.337]",-0.206,58.5
+loan_to_income,"(0.337, inf]",-0.392,61.4
+annual_inc_eff,"(-inf, 40000.0]",-0.302,50.9
+annual_inc_eff,"(40000.0, 50000.0]",-0.153,53.1
+annual_inc_eff,"(50000.0, 63000.0]",-0.054,54.5
+annual_inc_eff,"(63000.0, 78000.0]",0.062,56.1
+annual_inc_eff,"(78000.0, 100000.0]",0.199,58.1
+annual_inc_eff,"(100000.0, inf]",0.412,61.1
+inq_last_6mths,"(-inf, 1.0]",0.097,58.1
+inq_last_6mths,"(1.0, 2.0]",-0.242,48.0
+inq_last_6mths,"(2.0, inf]",-0.437,42.2
+inq_last_6mths,Missing,0.177,60.5
+credit_history_yrs,"(-inf, 9.5]",-0.207,51.8
+credit_history_yrs,"(9.5, 12.25]",-0.117,53.3
+credit_history_yrs,"(12.25, 14.5]",-0.025,54.8
+credit_history_yrs,"(14.5, 17.583]",0.04,55.9
+credit_history_yrs,"(17.583, 22.5]",0.137,57.5
+credit_history_yrs,"(22.5, inf]",0.226,59.0
+credit_history_yrs,Missing,0.177,58.2
+term_months,36.0,0.133,60.0
+term_months,60.0,-0.294,44.7
+home_ownership,MORTGAGE,0.16,58.0
+home_ownership,OWN,-0.027,54.8
+home_ownership,Other,-0.29,50.2
+home_ownership,RENT,-0.169,52.3
+purpose,Other,-0.211,49.2
+purpose,car,0.38,66.1
+purpose,credit_card,0.258,62.6
+purpose,debt_consolidation,-0.054,53.7
+purpose,home_improvement,0.15,59.5
+purpose,major_purchase,0.17,60.1
+purpose,other,-0.233,48.6
+purpose,small_business,-0.702,35.2

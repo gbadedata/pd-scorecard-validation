@@ -1,8 +1,19 @@
-"""
-PD scorecard (Weight-of-Evidence logistic, scaled to points) and an independent
-model validation: discrimination, calibration, stability (PSI), benchmarking
-against a challenger, and segment performance. Real Lending Club data.
-"""
+# %% [markdown]
+# # PD scorecard and independent model validation
+#
+# This notebook builds a probability-of-default (PD) application scorecard in the traditional way
+# (Weight-of-Evidence binning, logistic regression, scaled to points) and then reviews it the way an
+# independent second-line validator would: discrimination, calibration, population stability,
+# benchmarking against a challenger model, and performance by segment. The data is real Lending Club loans.
+#
+# **Outcome ("bad").** Default within 24 months of issue: charged off, with the default dated at last
+# payment plus four months (roughly 90+ days past due). Only loans whose whole 24-month window had passed
+# by the data snapshot (March 2019) are used, finished or not. Earlier versions used finished loans only,
+# which over-represents defaults in recent vintages.
+#
+# **Samples.** Development: loans issued up to 2014. Out-of-time validation: loans issued in 2015-2016.
+
+# %%
 import warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, json, os
 import matplotlib; matplotlib.use("Agg")
@@ -39,6 +50,14 @@ OOT_LAST=int(oot['issue_year'].max())
 print(f"Development (<=2014): {len(dev):,}  Out-of-time (2015-{OOT_LAST}): {len(oot):,}  "
       f"bad rate dev {dev.target.mean():.3f}  oot {oot.target.mean():.3f}")
 
+# %% [markdown]
+# ## 1. Weight of Evidence and Information Value
+# Each numeric feature is cut into six quantile bins on the development sample; categories under 1% are
+# grouped as "Other". A bin's Weight of Evidence is ln(share of goods / share of bads), so positive WoE means
+# lower risk. Information Value sums the gap between those shares across bins and measures how well a feature
+# separates goods from bads. Features with IV of at least 0.02 are kept.
+
+# %%
 # ---------------- WoE encoder ----------------
 class WoE:
     def __init__(self,nbins=6): self.nbins=nbins; self.maps={}; self.iv={}; self.edges={}; self.catmap={}
@@ -83,6 +102,13 @@ Xdev=woe.transform(dev)[FEATS]; Xoot=woe.transform(oot)[FEATS]
 lr=LogisticRegression(max_iter=2000,C=1.0).fit(Xdev,dev['target'])
 dev['pd']=lr.predict_proba(Xdev)[:,1]; oot['pd']=lr.predict_proba(Xoot)[:,1]
 
+# %% [markdown]
+# ## 2. Scaling to points
+# The logistic regression on WoE values is converted to a points scale: 600 points at odds of 50 goods to
+# 1 bad, with the odds doubling every 20 points (PDO). Higher score means lower risk. The full
+# feature-bin-points table is saved to `data/scorecard_table.csv`.
+
+# %%
 # ---------------- scale to scorecard points ----------------
 PDO=20; BASE=600; BASE_ODDS=50.0
 factor=PDO/np.log(2); offset=BASE-factor*np.log(BASE_ODDS); n=len(FEATS)
@@ -104,6 +130,13 @@ for f in FEATS:
         rows.append(dict(feature=f,bin=str(b),woe=round(w,3),points=round(pts,1)))
 pd.DataFrame(rows).to_csv(f"{DAT}/scorecard_table.csv",index=False)
 
+# %% [markdown]
+# ## 3. Independent validation
+# ### Discrimination
+# Gini (2 x AUC - 1) and KS on the development and out-of-time samples. A small drop from development to
+# out-of-time is expected; a large one would suggest overfitting or a changed population.
+
+# %%
 # ===================== VALIDATION =====================
 def gini(y,p): return 2*roc_auc_score(y,p)-1
 def ks(y,p): fpr,tpr,_=roc_curve(y,p); return float(np.max(tpr-fpr))
@@ -113,6 +146,14 @@ ks_dev,ks_oot=ks(dev['target'],dev['pd']),ks(oot['target'],oot['pd'])
 print(f"\nDiscrimination  dev: AUC {auc_dev:.3f} Gini {g_dev:.3f} KS {ks_dev:.3f}")
 print(f"                oot: AUC {auc_oot:.3f} Gini {g_oot:.3f} KS {ks_oot:.3f}")
 
+# %% [markdown]
+# ### Calibration
+# Predicted PD against observed default rate in ten score bands on the out-of-time sample. P/O is the
+# ratio of mean predicted PD to the observed default rate (1.0 is perfect; below 1.0 under-predicts).
+# The Hosmer-Lemeshow-style statistic is very large on samples this size even for small misses, so P/O
+# and the calibration chart are the more useful reads.
+
+# %%
 # calibration by score band (OOT)
 oot['band']=pd.qcut(oot['score'],10,duplicates='drop')
 cal=oot.groupby('band').agg(pred_pd=('pd','mean'),obs_dr=('target','mean'),n=('target','size'))
@@ -122,6 +163,12 @@ exp=cal['pred_pd']*cal['n']; obsb=cal['obs_dr']*cal['n']
 hl=float((((obsb-exp)**2)/(exp*(1-cal['pred_pd'])+EPS)).sum())
 print(f"Calibration  predicted/observed PD ratio {oe:.3f}  HL-stat {hl:.1f}")
 
+# %% [markdown]
+# ### Population stability
+# Population Stability Index between the development and out-of-time score distributions, on ten bands fixed
+# on the development sample. Under 0.10 is usually read as stable and over 0.25 as a significant shift.
+
+# %%
 # PSI dev vs oot on fixed score bands
 edges=np.quantile(dev['score'],np.linspace(0,1,11)); edges[0],edges[-1]=-np.inf,np.inf
 pd_dev=pd.cut(dev['score'],edges).value_counts(normalize=True).sort_index()
@@ -129,6 +176,12 @@ pd_oot=pd.cut(oot['score'],edges).value_counts(normalize=True).sort_index()
 psi=float((((pd_dev-pd_oot)*np.log((pd_dev+EPS)/(pd_oot+EPS)))).sum())
 print(f"Stability  PSI(dev vs oot) {psi:.3f}")
 
+# %% [markdown]
+# ### Benchmarking against a challenger
+# A gradient-boosted model on the raw features, trained on the same development sample. The question is
+# whether the simpler, explainable scorecard gives up much ranking power.
+
+# %%
 # challenger benchmark (HistGBM on raw features)
 pre=ColumnTransformer([("c",OneHotEncoder(handle_unknown='ignore',min_frequency=0.01),CAT)],remainder='passthrough')
 chal=Pipeline([("p",pre),("m",HistGradientBoostingClassifier(max_iter=250,learning_rate=0.06,max_depth=4,
@@ -138,6 +191,12 @@ chal.fit(dev_f,dev['target']); pc=chal.predict_proba(oot_f)[:,1]
 g_chal=gini(oot['target'],pc); auc_chal=roc_auc_score(oot['target'],pc)
 print(f"Benchmark   challenger (HistGBM) oot: AUC {auc_chal:.3f} Gini {g_chal:.3f}  | gap vs scorecard {g_chal-g_oot:+.3f}")
 
+# %% [markdown]
+# ### Performance by segment
+# Out-of-time Gini by loan term and the four largest loan purposes, to check the scorecard works across
+# the book and not just on average.
+
+# %%
 # segment discrimination (OOT)
 seg={}
 for t in [36.0,60.0]:
@@ -148,6 +207,11 @@ for p in oot['purpose'].value_counts().head(4).index:
     if m.sum()>2000: seg[str(p)]=round(gini(oot.loc[m,'target'],oot.loc[m,'pd']),3)
 print("Segment Gini (oot):",seg)
 
+# %% [markdown]
+# ## 4. Figures
+# ### Predictor strength (Information Value)
+
+# %%
 # ===================== FIGURES =====================
 # F1 Information Value
 fig,ax=plt.subplots(figsize=(8.6,4.8)); top=iv_sorted[:12][::-1]
@@ -158,6 +222,10 @@ ax.axvline(0.1,color=GREEN,ls=':',lw=1.2,label="IV 0.1 (medium predictor)")
 ax.set_xlabel("Information Value"); ax.set_title("Predictor strength (Information Value)"); ax.legend(frameon=False,fontsize=8.5)
 plt.tight_layout(); plt.savefig(f"{FIG}/01_information_value.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ### Weight of Evidence and bad rate by FICO bin
+
+# %%
 # F2 WoE pattern for FICO (monotonic risk)
 woe.fit  # ensure
 fic=dev.copy(); fic['b']=woe._bin(fic,'fico'); tb=fic.groupby('b').agg(woe=('target',lambda s: 0),br=('target','mean'),n=('target','size'))
@@ -172,6 +240,10 @@ ax.set_ylabel("Weight of Evidence",color=TEAL); ax2.set_ylabel("Bad rate (%)",co
 ax.set_title("WoE and bad rate by FICO bin (monotonic risk)")
 plt.tight_layout(); plt.savefig(f"{FIG}/02_woe_fico.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ### Default rate by score band (development)
+
+# %%
 # F3 score distribution + bad rate by score band
 sb=dev.copy(); sb['band']=pd.qcut(sb['score'],10,duplicates='drop')
 g3=sb.groupby('band').agg(n=('target','size'),br=('target','mean')); mids=[int(b.mid) for b in g3.index]
@@ -183,6 +255,10 @@ ax.set_xlabel("Credit score band (midpoint)"); ax.set_ylabel("Loans"); ax2.set_y
 ax.set_title("Scorecard: default rate falls as score rises")
 plt.tight_layout(); plt.savefig(f"{FIG}/03_score_distribution.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ### Calibration on the out-of-time sample
+
+# %%
 # F4 calibration
 fig,ax=plt.subplots(figsize=(6.6,5))
 ax.plot([0,cal['pred_pd'].max()*1.1],[0,cal['pred_pd'].max()*1.1],'--',color=SLATE,lw=1)
@@ -191,6 +267,10 @@ ax.set_xlabel("Predicted PD (band mean)"); ax.set_ylabel("Observed default rate"
 ax.set_title(f"Calibration on out-of-time sample (P/O {oe:.2f})")
 plt.tight_layout(); plt.savefig(f"{FIG}/04_calibration.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ### Population stability: development vs out-of-time
+
+# %%
 # F5 PSI
 fig,ax=plt.subplots(figsize=(8.8,4.6)); x=np.arange(len(pd_dev)); w=0.4
 ax.bar(x-w/2,pd_dev.values*100,w,label="development",color=NAVY,edgecolor="white")
@@ -200,6 +280,10 @@ ax.set_xlabel("Score band (low to high)"); ax.set_ylabel("Population (%)")
 ax.set_title(f"Population stability: development vs out-of-time (PSI {psi:.3f})"); ax.legend(frameon=False)
 plt.tight_layout(); plt.savefig(f"{FIG}/05_psi.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ### Effective challenge: scorecard vs challenger
+
+# %%
 # F6 benchmark ROC
 fig,ax=plt.subplots(figsize=(6.6,5))
 f1,t1,_=roc_curve(oot['target'],oot['pd']); f2,t2,_=roc_curve(oot['target'],pc)
@@ -209,6 +293,10 @@ ax.plot([0,1],[0,1],'--',color=SLATE,lw=1); ax.set_xlabel("False positive rate")
 ax.set_title("Effective challenge: scorecard vs challenger (out-of-time)"); ax.legend(loc="lower right",frameon=False)
 plt.tight_layout(); plt.savefig(f"{FIG}/06_benchmark_roc.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ### Discrimination by segment
+
+# %%
 # F7 segment Gini
 fig,ax=plt.subplots(figsize=(8.6,4.5)); ks_=list(seg.keys()); vs=list(seg.values())
 ax.bar(ks_,vs,color=NAVY,edgecolor="white")
@@ -218,6 +306,14 @@ ax.set_ylabel("Gini"); ax.set_title("Discrimination by segment (out-of-time)"); 
 plt.setp(ax.get_xticklabels(),rotation=20,ha='right',fontsize=9)
 plt.tight_layout(); plt.savefig(f"{FIG}/07_segment_gini.png",bbox_inches="tight"); plt.close()
 
+# %% [markdown]
+# ## 5. Validation summary
+# Each test gets a RAG rating: discrimination GREEN at Gini 0.30 or more (AMBER from 0.25); calibration
+# GREEN for P/O between 0.9 and 1.1 (AMBER 0.8-1.2); stability GREEN for PSI under 0.10 (AMBER under 0.25);
+# benchmark GREEN if the challenger's Gini is less than 0.05 higher (AMBER under 0.10). Everything is written
+# to `results.json`, which the README and validation report quote.
+
+# %%
 # ===================== SUMMARY =====================
 def rag(cond_g,cond_a): return "GREEN" if cond_g else ("AMBER" if cond_a else "RED")
 S=dict(
@@ -240,3 +336,12 @@ json.dump(S,open(f"{OUT}/results.json","w"),indent=2)
 dev[['score','pd','target','fico','dti_eff','term_months']].sample(min(40000,len(dev)),random_state=1).to_csv(f"{DAT}/scored_dev_sample.csv",index=False)
 print("\n=== SUMMARY ==="); print(json.dumps(S,indent=2))
 print("DONE")
+
+# %% [markdown]
+# ## Limitations
+# - **Approved loans only**, with no reject inference: the scorecard has never seen the applicants Lending
+#   Club declined, so it would not transfer directly to a full applicant population.
+# - **Default date is approximate** (last payment plus four months), because the file has no delinquency history.
+# - **Calibration drifts with the cycle.** Later vintages defaulted more, so a scorecard calibrated on 2007-2014
+#   under-predicts 2015-2016. In practice it would be recalibrated on recent data or paired with an overlay.
+# - **One out-of-time period**, observed through a benign US credit environment.
